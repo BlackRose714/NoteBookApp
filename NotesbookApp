@@ -1,0 +1,146 @@
+import sqlite3
+import datetime
+import time
+
+con = sqlite3.connect('notes.db')
+cur = con.cursor()
+
+def createtable():
+    cur.execute("""CREATE TABLE IF NOT EXISTS notes (
+        ID INTEGER NOT NULL UNIQUE,
+        TİTLE TEXT UNIQUE COLLATE NOCASE,
+        NOTE TEXT,
+        DATE REAL,
+        PRIMARY KEY(ID AUTOINCREMENT)
+    )""")
+
+def multiline_input(prompt="Enter your note (type 'END' on a new line to finish):\n"):
+    print(prompt)
+    lines = []
+    while True:
+        line = input()
+        if line.strip().upper() == "END":
+            break
+        lines.append(line)
+    return "\n".join(lines)
+
+def create_note():
+    title = input("Please enter a title: ")
+    note = multiline_input()
+    ttime = time.time()
+    date = datetime.datetime.fromtimestamp(ttime).strftime('%Y-%m-%d %H:%M:%S')
+    cur.execute("INSERT INTO notes (TİTLE, NOTE, DATE) VALUES (?, ?, ?)", (title, note, date))
+    con.commit()
+    print("New note created successfully.")
+
+def view_notes():
+    print("How would you like to sort the notes?\n1- Newest to Oldest\n2- Oldest to Newest")
+    choice = input("1 or 2: ")
+    if choice == "1":
+        cur.execute("SELECT * FROM notes ORDER BY DATE DESC")
+    elif choice == "2":
+        cur.execute("SELECT * FROM notes ORDER BY DATE ASC")
+    else:
+        print("Invalid choice.")
+        return
+    data = cur.fetchall()
+    for note in data:
+        print(f"ID: {note[0]} | Title: {note[1]} | Date: {note[3]}")
+        print(f"Note:\n{note[2]}")
+        print("-" * 40)
+
+def delete_note():
+    while True:
+        print("1- Delete only one note\n2- Delete all notes\n3- Return to the main page")
+        choice = input("Please enter the action you want to take: ")
+        
+        if choice == "1":
+            dnote = input("Please enter the title of the note you want to delete: ")
+            cur.execute("DELETE FROM notes WHERE TİTLE = ?", (dnote,))
+            con.commit()
+            
+            if cur.rowcount == 0:
+                print("No matching note found.")
+            else:
+                print(f"{cur.rowcount} note(s) deleted successfully.")
+        
+        elif choice == "2":
+            confirm = input("Are you sure you want to delete all notes? (yes/no): ").strip().lower()
+            if confirm == "yes":
+                cur.execute("DELETE FROM notes")
+                cur.execute("DELETE FROM sqlite_sequence WHERE name='notes'")
+                con.commit()
+                print("All notes deleted successfully.")
+            break
+        
+        else:
+            break
+
+def update_note():
+    while True:
+        print("1- Update the title\n2- Update the text\n3- Return to the main page")
+        choice = input("Please enter the action you want to take: ")
+        
+        if choice == "1":
+            utitle = input("Please enter the title you want to update: ")
+            ntitle = input("Please enter the new title: ")
+            cur.execute("UPDATE notes SET TİTLE = ? WHERE TİTLE = ?", (ntitle, utitle))
+            con.commit()
+            
+            if cur.rowcount == 0:
+                print("No matching note found.")
+            else:
+                print(f"{cur.rowcount} note(s) updated successfully.")
+        
+        elif choice == "2":
+            unote = input("Please enter the title of the note you want to update: ")
+            nnote = multiline_input("Enter new note text (type 'END' to finish):\n")
+            cur.execute("UPDATE notes SET NOTE = ? WHERE TİTLE = ?", (nnote, unote))
+            con.commit()
+            
+            if cur.rowcount == 0:
+                print("No matching note found.")
+            else:
+                print(f"{cur.rowcount} note(s) updated successfully.")
+        
+        else:
+            break
+
+def search_notes():
+    keyword = input("Enter keyword to search: ")
+    cur.execute("SELECT * FROM notes WHERE TİTLE LIKE ? OR NOTE LIKE ?", (f'%{keyword}%', f'%{keyword}%'))
+    data = cur.fetchall()
+    if data:
+        for note in data:
+            print(f"ID: {note[0]} | Title: {note[1]} | Date: {note[3]}")
+            print(f"Note:\n{note[2]}")
+            print("-" * 40)
+    else:
+        print("No matching notes found.")
+
+def home():
+    createtable()
+    print("***** -Welcome to Notesbook- *****")
+    while True:
+        print("\nPlease select the action you want to perform:")
+        print("1 - Create Note\n2 - View Notes\n3 - Update Notes\n4 - Delete Note\n5 - Search Notes\n6 - Exit")
+        choice = input("Choice: ")
+
+        if choice == "1":
+            create_note()
+        elif choice == "2":
+            view_notes()
+        elif choice == "3":
+            update_note()
+        elif choice == "4":
+            delete_note()
+        elif choice == "5":
+            search_notes()
+        elif choice == "6":
+            break
+        else:
+            print("Invalid selection. Please try again.")
+
+home()
+con.commit()
+con.close()
